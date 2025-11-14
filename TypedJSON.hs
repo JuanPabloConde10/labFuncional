@@ -56,7 +56,7 @@ objectWf _ = False
 typeWf :: JSONType -> Bool
 typeWf TyString = True 
 typeWf TyNum = True
-typeWf (TyObject o) = objectWf o
+typeWf (TyObject o) = objectWf o && all (typeWf . snd) o
 typeWf (TyArray t) = typeWf t
 typeWf TyBool = True
 typeWf TyNull = True
