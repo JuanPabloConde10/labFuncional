@@ -70,7 +70,10 @@ leftJoin l r = l ++ (filter fil r)
 -- repetidas en ambos objetos, en la unión tienen prioridad los
 -- campos del segundo objeto.
 rightJoin :: Object a -> Object a -> Object a
-rightJoin = flip leftJoin
+rightJoin l r = (filter fil l) ++ r
+              where 
+                fil (k,_) = not $ elem k claves
+                claves = keysOf r
 
 -- Dado un predicado sobre objetos JSON, y un arreglo, construye el
 -- arreglo con los elementos que satisfacen el predicado.
