@@ -36,16 +36,22 @@ getApellido j = case lookupField j "apellido" of
             Nothing -> Nothing
             Just a -> fromJString a
 
-getCursos :: JSON -> Maybe [JSON]
-getCursos j = case lookupField j "cursos" of
-            Nothing -> Nothing
-            Just a -> fromJArray a
+getCursos :: JSON -> Maybe JSON
+getCursos j = do
+  cursos <- lookupField j "cursos"
+  case fromJArray cursos of
+    Just _  -> Just cursos
+    Nothing -> Nothing
+
+getCursosArray :: JSON -> Maybe [JSON]
+getCursosArray j = getCursos j >>= fromJArray
 
 -- obtiene arreglo con cursos que fueron aprobados
 aprobados :: JSON -> Maybe JSON
-aprobados e = case getCursos e of
-                Nothing -> Nothing
-                Just c -> Just $ mkJArray $ filter filtro c
+aprobados e = do
+  cursos <- getCursosArray e
+  let aprobadosCursos = filter filtro cursos
+  return $ mkJArray aprobadosCursos
   where
     filtro jobj = case fromJObject jobj of
                     Nothing -> False
@@ -56,9 +62,10 @@ aprobados e = case getCursos e of
                                             Just nota -> 3 <= nota
 -- obtiene arreglo con cursos rendidos en un año dado
 enAnio :: Integer -> JSON -> Maybe JSON
-enAnio anio e = case getCursos e of
-                Nothing -> Nothing
-                Just c -> Just $ mkJArray $ filter filtro c
+enAnio anio e = do
+  cursos <- getCursosArray e
+  let cursosEnAnio = filter filtro cursos
+  return $ mkJArray cursosEnAnio
   where
     filtro jobj = case fromJObject jobj of
                     Nothing -> False
@@ -70,9 +77,10 @@ enAnio anio e = case getCursos e of
 
 -- retorna el promedio de las notas de los cursos
 promedioEscolaridad :: JSON -> Maybe Float
-promedioEscolaridad e = case getCursos e of
-                Nothing -> Nothing
-                Just c -> Just $ promedio $ map filtro c
+promedioEscolaridad e = do
+  cursos <- getCursosArray e
+  let notas = map filtro cursos
+  return $ promedio notas
   where
     promedio [] = 0.0
     promedio xs = sum xs / fromIntegral (length xs)
