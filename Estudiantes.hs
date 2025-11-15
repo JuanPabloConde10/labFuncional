@@ -28,6 +28,14 @@ tyEstudiante =
     , ("nombre", TyString)
     ]
 
+cursoClave :: JSON -> Maybe (Integer, Integer, Integer)
+cursoClave curso = do
+  obj <- fromJObject curso
+  anio <- lookupFieldObj obj "anio" >>= fromJNumber
+  semestre <- lookupFieldObj obj "semestre" >>= fromJNumber
+  codigo <- lookupFieldObj obj "codigo" >>= fromJNumber
+  return (anio, semestre, codigo)
+
 ---------------------------------------------------------------------------------------
 -- Importante:
 -- Notar que NO se puede importar el módulo AST, que es interno a la biblioteca.
@@ -38,7 +46,20 @@ tyEstudiante =
 estaBienFormadoEstudiante :: JSON -> Bool  
 estaBienFormadoEstudiante e =
   hasType e tyEstudiante &&
-  maybe False cursosOrdenadosDesc (getCursosArray e)
+  maybe False cursosOrdenados (getCursosArray e)
+  where
+    cursosOrdenados [] = False
+    cursosOrdenados cursos =
+      case traverse cursoClave cursos of
+        Nothing -> False
+        Just claves -> all paresOrdenados (zip claves (drop 1 claves))
+
+    paresOrdenados ((anio1, semestre1, codigo1), (anio2, semestre2, codigo2))
+      | anio1 > anio2 = True
+      | anio1 < anio2 = False
+      | semestre1 > semestre2 = True
+      | semestre1 < semestre2 = False
+      | otherwise = codigo1 <= codigo2
 -- getters
 getCI :: JSON -> Maybe Integer
 getCI j = case lookupField j "CI" of
@@ -113,61 +134,36 @@ promedioEscolaridad e = do
 
 -- agrega curso a lista de cursos de un estudiante
 addCurso :: Object JSON -> JSON -> JSON
-addCurso cursoNuevo e = case fromJObject e of
-                      Nothing -> e
-                      Just campos -> mkJObject (map agregarCurso campos)
+addCurso cursoNuevo e =
+  case fromJObject e of
+    Nothing -> e
+    Just campos -> mkJObject (map agregarCurso campos)
   where
     nuevoCurso = mkJObject cursoNuevo
-    agregarCurso ("cursos", c) = case fromJArray c of
-                              Nothing -> ("cursos", c)
-                              Just cursos -> ("cursos", mkJArray (insertarCursoOrdenado nuevoCurso cursos))
+
+    agregarCurso ("cursos", c) =
+      case fromJArray c of
+        Nothing -> ("cursos", c)
+        Just cursos -> ("cursos", mkJArray (insertar nuevoCurso cursos))
     agregarCurso par = par
 
-insertarCursoOrdenado :: JSON -> [JSON] -> [JSON]
-insertarCursoOrdenado nuevo [] = [nuevo]
-insertarCursoOrdenado nuevo (c:cs) = case compareCursos nuevo c of
-                                    Just LT -> nuevo : c : cs
-                                    _       -> c : insertarCursoOrdenado nuevo cs
+    insertar curso [] = [curso]
+    insertar curso (x:xs) =
+      case comparar curso x of
+        Just True -> curso : x : xs
+        _         -> x : insertar curso xs
 
-compareCursos :: JSON -> JSON -> Maybe Ordering
-compareCursos a b = do
-  claveA <- cursoKey a
-  claveB <- cursoKey b
-  pure (compareCursoKey claveA claveB)
+    comparar a b = do
+      claveA <- cursoClave a
+      claveB <- cursoClave b
+      return (antes claveA claveB)
 
-type CursoKey = (Integer, Integer, Integer)
-
-cursoKey :: JSON -> Maybe CursoKey
-cursoKey curso = do
-  obj <- fromJObject curso
-  anio <- lookupFieldObj obj "anio" >>= fromJNumber
-  semestre <- lookupFieldObj obj "semestre" >>= fromJNumber
-  codigo <- lookupFieldObj obj "codigo" >>= fromJNumber
-  pure (anio, semestre, codigo)
-
-compareCursoKey :: CursoKey -> CursoKey -> Ordering
-compareCursoKey (anio1, semestre1, codigo1) (anio2, semestre2, codigo2)
-  | anio1 > anio2 = LT
-  | anio1 < anio2 = GT
-  | semestre1 > semestre2 = LT
-  | semestre1 < semestre2 = GT
-  | codigo1 < codigo2 = LT
-  | codigo1 > codigo2 = GT
-  | otherwise = EQ
-
-
-
-cursosOrdenadosDesc :: [JSON] -> Bool
-cursosOrdenadosDesc cursos =
-  case traverse cursoKey cursos of
-    Nothing -> False
-    Just [] -> False
-    Just claves ->
-      all (\(a, b) -> compareCursoKey a b /= GT) (zip claves (drop 1 claves))
-
-
-
-                
+    antes (anio1, semestre1, codigo1) (anio2, semestre2, codigo2)
+      | anio1 > anio2 = True
+      | anio1 < anio2 = False
+      | semestre1 > semestre2 = True
+      | semestre1 < semestre2 = False
+      | otherwise = codigo1 <= codigo2
 
 cursoNuevo =
   [ ("nombre"  , mkJString  "Matemática Discreta")
