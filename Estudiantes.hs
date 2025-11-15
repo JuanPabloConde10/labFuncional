@@ -9,6 +9,25 @@ module Estudiantes where
 import JSONLibrary
 import TypedJSON
 
+tyCurso :: JSONType
+tyCurso =
+  TyObject
+    [ ("anio", TyNum)
+    , ("codigo", TyNum)
+    , ("nombre", TyString)
+    , ("nota", TyNum)
+    , ("semestre", TyNum)
+    ]
+
+tyEstudiante :: JSONType
+tyEstudiante =
+  TyObject
+    [ ("CI", TyNum)
+    , ("apellido", TyString)
+    , ("cursos", TyArray tyCurso)
+    , ("nombre", TyString)
+    ]
+
 ---------------------------------------------------------------------------------------
 -- Importante:
 -- Notar que NO se puede importar el módulo AST, que es interno a la biblioteca.
@@ -17,9 +36,27 @@ import TypedJSON
 
 -- decide si un valor que representa un estudiante esta bien formado
 estaBienFormadoEstudiante :: JSON -> Bool  
-estaBienFormadoEstudiante e = case typeOf e of 
-                                Just tipo -> True
-                                Nothing -> False
+estaBienFormadoEstudiante e = hasType e tyEstudiante && maybe False cursosOrdenados (getCursosArray e)
+  where
+    cursosOrdenados :: [JSON] -> Bool
+    cursosOrdenados cursos = case traverse cursoClave cursos of
+                            Just claves -> not (null claves) && all paresOrdenados (zip claves (drop 1 claves))
+                            Nothing -> False
+
+    paresOrdenados ((anio1, semestre1, codigo1), (anio2, semestre2, codigo2))
+      | anio1 > anio2 = True
+      | anio1 < anio2 = False
+      | semestre1 > semestre2 = True
+      | semestre1 < semestre2 = False
+      | otherwise = codigo1 <= codigo2
+
+    cursoClave :: JSON -> Maybe (Integer, Integer, Integer)
+    cursoClave curso = do
+      obj <- fromJObject curso
+      anio <- lookupFieldObj obj "anio" >>= fromJNumber
+      semestre <- lookupFieldObj obj "semestre" >>= fromJNumber
+      codigo <- lookupFieldObj obj "codigo" >>= fromJNumber
+      pure (anio, semestre, codigo)
 -- getters
 getCI :: JSON -> Maybe Integer
 getCI j = case lookupField j "CI" of
