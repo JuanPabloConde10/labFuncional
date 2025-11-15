@@ -36,27 +36,9 @@ tyEstudiante =
 
 -- decide si un valor que representa un estudiante esta bien formado
 estaBienFormadoEstudiante :: JSON -> Bool  
-estaBienFormadoEstudiante e = hasType e tyEstudiante && maybe False cursosOrdenados (getCursosArray e)
-  where
-    cursosOrdenados :: [JSON] -> Bool
-    cursosOrdenados cursos = case traverse cursoClave cursos of
-                            Just claves -> not (null claves) && all paresOrdenados (zip claves (drop 1 claves))
-                            Nothing -> False
-
-    paresOrdenados ((anio1, semestre1, codigo1), (anio2, semestre2, codigo2))
-      | anio1 > anio2 = True
-      | anio1 < anio2 = False
-      | semestre1 > semestre2 = True
-      | semestre1 < semestre2 = False
-      | otherwise = codigo1 <= codigo2
-
-    cursoClave :: JSON -> Maybe (Integer, Integer, Integer)
-    cursoClave curso = do
-      obj <- fromJObject curso
-      anio <- lookupFieldObj obj "anio" >>= fromJNumber
-      semestre <- lookupFieldObj obj "semestre" >>= fromJNumber
-      codigo <- lookupFieldObj obj "codigo" >>= fromJNumber
-      pure (anio, semestre, codigo)
+estaBienFormadoEstudiante e =
+  hasType e tyEstudiante &&
+  maybe False cursosOrdenadosDesc (getCursosArray e)
 -- getters
 getCI :: JSON -> Maybe Integer
 getCI j = case lookupField j "CI" of
@@ -131,16 +113,60 @@ promedioEscolaridad e = do
 
 -- agrega curso a lista de cursos de un estudiante
 addCurso :: Object JSON -> JSON -> JSON
-addCurso cursoNuevo e =
-  case fromJObject e of 
-    Nothing -> e
-    Just campos -> mkJObject (map agregarCurso campos)
+addCurso cursoNuevo e = case fromJObject e of
+                      Nothing -> e
+                      Just campos -> mkJObject (map agregarCurso campos)
   where
-    agregarCurso ("cursos", c) =
-      case fromJArray c of
-        Nothing -> ("cursos", c)
-        Just cursos -> ("cursos", mkJArray (cursos ++ [mkJObject cursoNuevo]))
+    nuevoCurso = mkJObject cursoNuevo
+    agregarCurso ("cursos", c) = case fromJArray c of
+                              Nothing -> ("cursos", c)
+                              Just cursos -> ("cursos", mkJArray (insertarCursoOrdenado nuevoCurso cursos))
     agregarCurso par = par
+
+insertarCursoOrdenado :: JSON -> [JSON] -> [JSON]
+insertarCursoOrdenado nuevo [] = [nuevo]
+insertarCursoOrdenado nuevo (c:cs) = case compareCursos nuevo c of
+                                    Just LT -> nuevo : c : cs
+                                    _       -> c : insertarCursoOrdenado nuevo cs
+
+compareCursos :: JSON -> JSON -> Maybe Ordering
+compareCursos a b = do
+  claveA <- cursoKey a
+  claveB <- cursoKey b
+  pure (compareCursoKey claveA claveB)
+
+type CursoKey = (Integer, Integer, Integer)
+
+cursoKey :: JSON -> Maybe CursoKey
+cursoKey curso = do
+  obj <- fromJObject curso
+  anio <- lookupFieldObj obj "anio" >>= fromJNumber
+  semestre <- lookupFieldObj obj "semestre" >>= fromJNumber
+  codigo <- lookupFieldObj obj "codigo" >>= fromJNumber
+  pure (anio, semestre, codigo)
+
+compareCursoKey :: CursoKey -> CursoKey -> Ordering
+compareCursoKey (anio1, semestre1, codigo1) (anio2, semestre2, codigo2)
+  | anio1 > anio2 = LT
+  | anio1 < anio2 = GT
+  | semestre1 > semestre2 = LT
+  | semestre1 < semestre2 = GT
+  | codigo1 < codigo2 = LT
+  | codigo1 > codigo2 = GT
+  | otherwise = EQ
+
+
+
+cursosOrdenadosDesc :: [JSON] -> Bool
+cursosOrdenadosDesc cursos =
+  case traverse cursoKey cursos of
+    Nothing -> False
+    Just [] -> False
+    Just claves ->
+      all (\(a, b) -> compareCursoKey a b /= GT) (zip claves (drop 1 claves))
+
+
+
                 
 
 cursoNuevo =
