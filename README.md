@@ -13,11 +13,6 @@ Los tests oficiales están en `tests/TestProfes.hs` y se ejecutan con:
 runhaskell tests/TestProfes.hs
 ```
 
-## Cambios pendientes vs. letra 2025
+## Estado actual
 
-- `lookupFieldObj`, `valuesOf` y `entriesOf` deben ser polimórficas en el tipo del valor de los objetos; hoy están restringidas a `JSON` y no sirven para trabajar con `TyObject`.
-- `consKV` figura en la API pública, pero no se exporta desde `JSONLibrary`; ningún cliente puede usarla.
-- `sortKeys` debe ser estable, respetando el orden relativo de claves duplicadas. La implementación actual usa un quicksort que invierte los duplicados.
-- `aprobados` y `enAnio` en `Estudiantes.hs` sólo devuelven el arreglo de cursos filtrado. El enunciado pide regresar el objeto estudiante completo con el campo `cursos` actualizado, propagando `Nothing` cuando el JSON no respeta el esquema.
-
-Una vez resueltos estos puntos, el código queda alineado con lo descrito en `letra2025.pdf`.
+El proyecto implementa las funciones solicitadas en `letra2025.pdf` y pasa los tests provistos por el equipo docente (`tests/TestProfes.hs`). Las pocas diferencias detectadas originalmente entre la letra y la batería de pruebas (como el contrato de `aprobados`) fueron resueltas en la última versión del archivo de tests, por lo que ya no hay inconsistencias conocidas.
