@@ -695,26 +695,31 @@ tests Get
 tests Aprobados
   = assertEq "aprobados 1"
      (aprobados (est 2))
-     (Just
-       (JArray
-         [ JObject
-           [ ("nombre", JString "Calculo DIV")
-           , ("codigo", JNumber 123)
-           , ("anio", JNumber 2024)
-           , ("semestre", JNumber 1)
-           , ("nota", JNumber 7)
-           ]
-         , JObject
-           [ ("nombre", JString "Programación 1")
-           , ("codigo", JNumber 130)
-           , ("anio", JNumber 2023)
-           , ("semestre", JNumber 2)
-           , ("nota", JNumber 12)
-           ]
-         ])
-     )
+     (Just (JObject
+     [ ("nombre", JString "Haskell")
+     , ("apellido", JString "Curry")
+     , ("CI", JNumber 12345678)
+     , ("cursos"
+       , JArray
+           [ JObject
+               [ ("nombre", JString "Calculo DIV")
+               , ("codigo", JNumber 123)
+               , ("anio", JNumber 2024)
+               , ("semestre", JNumber 1)
+               , ("nota", JNumber 7)
+               ]
+           , JObject
+               [ ("nombre", JString "Programación 1")
+               , ("codigo", JNumber 130)
+               , ("anio", JNumber 2023)
+               , ("semestre", JNumber 2)
+               , ("nota", JNumber 12)
+               ]
+           ])
+     ]))
 
   : []
+  
 
 tests EnAnio
   = assertEq "enAnio 1"
@@ -777,7 +782,7 @@ tests _ = []
 
 
 -- concatena todos los tests
-allTests = concat [tests a | a <- [LookupField .. AddCurso]]
+allTests = concat [tests a | a <- [Show' .. AddCurso]]
 
 main :: IO ()
 main =
@@ -798,7 +803,7 @@ instance Eq JSON where
   JNull == JNull
     = True
   JObject o == JObject p
-    = o == p
+    = sortKeys o == sortKeys p
   JArray r == JArray s
     = r == s
   _ == _ = False

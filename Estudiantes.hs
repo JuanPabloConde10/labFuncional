@@ -6,6 +6,7 @@
 
 module Estudiantes where
 
+import Control.Monad (filterM, guard)
 import JSONLibrary
 import TypedJSON
 
@@ -89,48 +90,58 @@ getCursosArray j = getCursos j >>= fromJArray
 -- obtiene arreglo con cursos que fueron aprobados
 aprobados :: JSON -> Maybe JSON
 aprobados e = do
-  cursos <- getCursosArray e
-  let aprobadosCursos = filter filtro cursos
-  return $ mkJArray aprobadosCursos
-  where
-    filtro jobj = case fromJObject jobj of
-                    Nothing -> False
-                    Just o -> case lookupFieldObj o "nota" of
-                                Nothing -> False
-                                Just n -> case fromJNumber n of 
-                                            Nothing -> False
-                                            Just nota -> 3 <= nota
+  campos <- fromJObject e
+  cursos <- lookupFieldObj campos "cursos" >>= fromJArray
+  aprobadosCursos <-
+    filterM
+      (\curso -> do
+          obj <- fromJObject curso
+          nota <- lookupFieldObj obj "nota" >>= fromJNumber
+          return (nota >= 3)
+      )
+      cursos
+  let camposActualizados =
+        map
+          (\(k, v) ->
+              if k == "cursos"
+                then (k, mkJArray aprobadosCursos)
+                else (k, v))
+          campos
+  return $ mkJObject camposActualizados
+
 -- obtiene arreglo con cursos rendidos en un año dado
 enAnio :: Integer -> JSON -> Maybe JSON
 enAnio anio e = do
-  cursos <- getCursosArray e
-  let cursosEnAnio = filter filtro cursos
+  campos <- fromJObject e
+  cursos <- lookupFieldObj campos "cursos" >>= fromJArray
+  cursosEnAnio <-
+    filterM
+      (\curso -> do
+          obj <- fromJObject curso
+          cursoAnio <- lookupFieldObj obj "anio" >>= fromJNumber
+          return (cursoAnio == anio)
+      )
+      cursos
+  guard (not (null cursosEnAnio))
   return $ mkJArray cursosEnAnio
-  where
-    filtro jobj = case fromJObject jobj of
-                    Nothing -> False
-                    Just o -> case lookupFieldObj o "anio" of
-                                Nothing -> False
-                                Just a -> case fromJNumber a of 
-                                            Nothing -> False
-                                            Just a' -> anio == a'
 
 -- retorna el promedio de las notas de los cursos
 promedioEscolaridad :: JSON -> Maybe Float
 promedioEscolaridad e = do
   cursos <- getCursosArray e
-  let notas = map filtro cursos
+  guard (not (null cursos))
+  notas <-
+    traverse
+      (\curso -> do
+          obj <- fromJObject curso
+          lookupFieldObj obj "nota" >>= fromJNumber
+      )
+      cursos
   return $ promedio notas
   where
-    promedio [] = 0.0
-    promedio xs = sum xs / fromIntegral (length xs)
-    filtro jobj = case fromJObject jobj of
-                    Nothing -> 0.0
-                    Just o -> case lookupFieldObj o "nota" of
-                                Nothing -> 0.0
-                                Just n -> case fromJNumber n of 
-                                            Nothing -> 0.0
-                                            Just nota -> fromIntegral nota :: Float 
+    promedio xs =
+      let total = fromIntegral (sum xs) :: Float
+      in total / fromIntegral (length xs)
 
 -- agrega curso a lista de cursos de un estudiante
 addCurso :: Object JSON -> JSON -> JSON

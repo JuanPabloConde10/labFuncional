@@ -14,6 +14,7 @@ module JSONLibrary
   rightJoin,
   filterArray,
   insertKV,
+  consKV,
   sortKeys,
   mkJString, mkJNumber, mkJBoolean, mkJNull, mkJObject, mkJArray,
   fromJString, fromJNumber, fromJBoolean, fromJObject, fromJArray,
@@ -34,14 +35,13 @@ import AST
  retorna el valor de más a la derecha.
 -}
 lookupField :: JSON -> Key -> Maybe JSON
-lookupField (JObject lista) key =  if null x then Nothing else Just (snd.last $ x)
-                                    where x = (filter (\ (k,_) -> k == key) $ lista)
+lookupField (JObject lista) key = lookupFieldObj lista key
 lookupField _ _ = Nothing
 
 -- Análoga a la anterior, pero el primer argumento es un objeto.
-lookupFieldObj :: Object JSON -> Key -> Maybe JSON
-lookupFieldObj lista key =  if null x then Nothing else Just (snd.last $ x)
-                                    where x = (filter (\ (k,_) -> k == key) $ lista)
+lookupFieldObj :: Object a -> Key -> Maybe a
+lookupFieldObj lista key =
+  foldl (\acc (k, v) -> if k == key then Just v else acc) Nothing lista
 
 -- retorna la lista de claves de un objeto, manteniendo el orden en el
 -- que se encontraban.
@@ -50,11 +50,11 @@ keysOf lista = [k | (k,_) <- lista]
 
 -- Retorna una lista con los valores contenidos en los campos de un objeto,
 -- manteniendo el orden en el que se encontraban.
-valuesOf :: Object JSON -> [JSON]
+valuesOf :: Object a -> [a]
 valuesOf lista = [v | (_,v) <- lista]
 
 -- retorna todos los campos de un objeto, en el orden en que se encontraban.
-entriesOf :: Object JSON -> [(Key,JSON)]
+entriesOf :: Object a -> [(Key,a)]
 entriesOf x = x
 
 -- Se combinan dos objetos, en orden.  En caso que haya claves
@@ -93,10 +93,12 @@ consKV x xs = x:xs
 -- ordena claves de un objeto
 sortKeys :: Object a -> Object a
 sortKeys [] = []
-sortKeys ((k,v):xs) = sortKeys l ++ [(k,v)] ++ sortKeys r
-                      where
-                        l = [(k2,v2)| (k2,v2) <- xs, k2 <= k]
-                        r = [(k3,v3)| (k3,v3) <- xs, k3 > k]
+sortKeys (x:xs) = insertar x (sortKeys xs)
+  where
+    insertar y [] = [y]
+    insertar y@(ky, _) ys@(z@(kz, _):zs)
+      | ky < kz = y : ys
+      | otherwise = z : insertar y zs
 
 -- constructoras
 mkJString :: String -> JSON
