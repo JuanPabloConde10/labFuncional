@@ -175,11 +175,3 @@ addCurso cursoNuevo e =
       | semestre1 > semestre2 = True
       | semestre1 < semestre2 = False
       | otherwise = codigo1 <= codigo2
-
-cursoNuevo =
-  [ ("nombre"  , mkJString  "Matemática Discreta")
-  , ("codigo"  , mkJNumber  2710)
-  , ("anio"    , mkJNumber  2023)
-  , ("semestre", mkJNumber  1)
-  , ("nota"    , mkJNumber  12)
-  ]

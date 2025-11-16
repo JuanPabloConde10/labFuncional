@@ -93,12 +93,7 @@ consKV x xs = x:xs
 -- ordena claves de un objeto
 sortKeys :: Object a -> Object a
 sortKeys [] = []
-sortKeys (x:xs) = insertar x (sortKeys xs)
-  where
-    insertar y [] = [y]
-    insertar y@(ky, _) ys@(z@(kz, _):zs)
-      | ky < kz = y : ys
-      | otherwise = z : insertar y zs
+sortKeys (x:xs) = insertKV x (sortKeys xs)
 
 -- constructoras
 mkJString :: String -> JSON
