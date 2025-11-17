@@ -1,7 +1,7 @@
-{- Grupo: X
+{- Grupo: 25
    Integrante(s):
-     Apellido, Nombre, XXXXXXXX
-     Apellido, Nombre, XXXXXXXX
+     Conde Inzaurralde, Juan Pablo, 52734067
+     Daneri Dini, Mateo Hernan, 56607501
 -}
 
 module JSONLibrary
